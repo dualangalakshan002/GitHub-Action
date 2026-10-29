@@ -8,8 +8,12 @@ jobs:
     steps:
       - name: Print hello
         run: echo "hello github actions!"
+        
       - name: Show some info
         run: |
           echo "Repo: ${{github.repository}}"
           echo "Pushed by: ${{github.actor}}"
           date
+
+      - name: Your name
+        run: echo "I'am dulanga lakshan"
