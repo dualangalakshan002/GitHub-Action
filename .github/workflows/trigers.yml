@@ -1,0 +1,33 @@
+name: Trigger practice
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+    inputs:
+      person:
+        description: 'Enter name?'
+        required: true
+        default: 'Dulanga Lakshan'
+
+jobs:
+  show-trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: which event?
+        run: echo "This workflow was triggered by the ${{ github.event_name }} event."
+      
+      - name: which branch?
+        run: echo "Branch is ${{ github.ref_name }}"
+
+      - name: Say hi (in manual run)
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "Hello ${{ inputs.person }}!"
