@@ -5,10 +5,10 @@ on: push
 jobs:
   say-hello:
     runs-on: ubuntu-latest
-    steps:
+      steps:
       - name: Print hello
         run: echo "hello github actions!"
-        
+
       - name: Show some info
         run: |
           echo "Repo: ${{github.repository}}"
