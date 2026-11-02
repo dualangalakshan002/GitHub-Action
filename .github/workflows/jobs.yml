@@ -12,6 +12,11 @@ jobs:
           sleep 10
           echo "hello from build" > result.txt
           ls
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-result
+          path: result.txt
   test:
     runs-on: ubuntu-latest
     needs: build
@@ -19,20 +24,22 @@ jobs:
       - name: Test
         run: |
           echo "Testing...."
-          sleep 10
-          
-          
+          sleep 10                  
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Lint
         run: |
           echo "Linting...."
-          sleep 10
+          sleep 5
   deploy:
     runs-on: ubuntu-latest
     needs: [build, test, lint]
     steps:
+      - name: Download result
+        uses: actions/download-artifact@v4
+        with:
+          name: my-result
       - name: Deploy
         run: |
           echo "Deploying..."
