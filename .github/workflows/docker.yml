@@ -27,7 +27,7 @@ jobs:
 
       - name: Test image
         run: |
-          docker run -d --name app -p 300:300 $IMAGE:latest
+          docker run -d --name app -p 3000:3000 $IMAGE:latest
           sleep 3
           curl -f http://localhost:3000
 
