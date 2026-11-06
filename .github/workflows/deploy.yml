@@ -1,0 +1,96 @@
+name: CI/CD - Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      image: ${{ steps.vars.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image name
+        id: vars
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        run: docker build -t ${{ steps.vars.outputs.image }}:${{ github.sha }} -t ${{ steps.vars.outputs.image }}:latest .
+
+      - name: Test image
+        run: |
+          docker run -d --name app -p 3000:3000 ${{ steps.vars.outputs.image }}:latest
+          sleep 3
+          curl -f http://localhost:3000
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        run: |
+          docker push ${{ steps.vars.outputs.image }}:${{ github.sha }}
+          docker push ${{ steps.vars.outputs.image }}:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          TAG: ${{ github.sha }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: IMAGE,TAG
+          script: |
+            set -e
+            echo "Deploying $IMAGE:$TAG"
+            docker pull $IMAGE:$TAG
+            docker stop myapp || true
+            docker rm myapp || true
+            docker run -d --name myapp --restart unless-stopped \
+              -p 80:3000 -e APP_VERSION=$TAG $IMAGE:$TAG
+            docker image prune -f
+            docker ps
+
+      - name: Health check
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsS http://${{ secrets.EC2_HOST }}; then
+              echo "Deploy success! 🎉"
+              exit 0
+            fi
+            echo "Waiting... ($i)"
+            sleep 5
+          done
+          echo "::error::Site eka respond karanne naha!"
+          exit 1

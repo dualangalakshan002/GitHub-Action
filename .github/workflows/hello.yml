@@ -1,6 +1,6 @@
 name: Hello Workflow
 
-on: push
+on: workflow_dispatch
 
 jobs:
   say-hello:
